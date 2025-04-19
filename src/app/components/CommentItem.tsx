@@ -1,10 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/lib/supabase/client';
-import { HeartIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import CommentForm from './CommentForm';
 
 interface Comment {
@@ -30,6 +27,7 @@ export default function CommentItem({ comment, postId, onCommentAdded }: Comment
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this comment?')) return;
+    if (!supabase) return;
 
     setIsDeleting(true);
     try {
