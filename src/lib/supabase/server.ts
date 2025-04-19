@@ -6,15 +6,9 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 export async function createClient() {
   if (!supabaseUrl || !supabaseAnonKey) {
-    // Return a mock client in development/staging
     if (process.env.NODE_ENV !== 'production') {
-      console.warn('Missing Supabase environment variables. Using mock client.')
-      return {
-        auth: {
-          signOut: async () => ({ error: null }),
-          getSession: async () => ({ data: { session: null }, error: null }),
-        },
-      }
+      console.warn('Missing Supabase environment variables. Returning null client.')
+      return null
     }
     throw new Error('Missing Supabase environment variables')
   }
