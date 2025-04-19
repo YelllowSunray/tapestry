@@ -2,74 +2,87 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  console.log(`[Middleware] Path: ${request.nextUrl.pathname}`); // Log the path
-  
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  try {
+    console.log(`[Middleware] Path: ${request.nextUrl.pathname}`);
+    
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is updated, update the cookies for the request and response
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the cookies for the request and response
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('[Middleware] Missing Supabase environment variables');
+      return NextResponse.next();
+    }
+
+    let response = NextResponse.next({
+      request: {
+        headers: request.headers,
       },
-    }
-  )
+    })
 
-  // Refresh session if expired - important!
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (session) {
-    // Refresh the session if it's about to expire
-    const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-    if (refreshedSession) {
-      console.log(`[Middleware] Session refreshed for user: ${refreshedSession.user.email}`);
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseKey,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+            response = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            })
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+          },
+          remove(name: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+            response = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            })
+            response.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+          },
+        },
+      }
+    )
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        if (refreshedSession) {
+          console.log(`[Middleware] Session refreshed for user: ${refreshedSession.user.email}`);
+        }
+      }
+    } catch (error) {
+      console.error('[Middleware] Error refreshing session:', error);
     }
+
+    return response
+  } catch (error) {
+    console.error('[Middleware] Error:', error);
+    return NextResponse.next();
   }
-
-  return response
 }
 
 // Ensure the middleware is only called for relevant paths.
