@@ -2,11 +2,20 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 
 export async function logout() {
   const supabase = await createClient();
   const { error } = await supabase.auth.signOut();
-  return { error };
+
+  if (error) {
+    console.error('Error logging out:', error);
+    redirect('/error');
+  }
+
+  // Revalidate the root path to ensure UI updates correctly after logout
+  revalidatePath('/', 'layout');
+  
+  // Redirect to the homepage after successful logout
+  redirect('/');
 } 
