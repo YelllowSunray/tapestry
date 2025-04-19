@@ -1,103 +1,198 @@
-import Image from "next/image";
+'use client'; // Need client component for hooks and auth state
+
+import { useState, useEffect, useCallback } from 'react';
+// import Link from 'next/link'; // No longer needed here
+import { supabase } from '@/lib/supabase/client';
+import type { Session, PostgrestError, User } from '@supabase/supabase-js';
+import StatusForm from './components/StatusForm';
+import PostItem from './components/PostItem'; // Import the PostItem component (we'll create this next)
+
+// Define a type for our posts
+export interface Post {
+  id: number;
+  content: string;
+  created_at: string;
+  user_id: string;
+  author_email?: string; // Keep this for potential fallback
+  full_name?: string | null; // Add full_name (can be null)
+  category?: string;
+  category_emoji?: string;
+  category_part?: string;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [session, setSession] = useState<Session | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<{ full_name: string } | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (session?.user) {
+      // Fetch user profile
+      supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', session.user.id)
+        .single()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Error fetching profile:', error);
+          } else {
+            setUserProfile(data);
+          }
+        });
+    }
+  }, [session]);
+
+  // Removed session state, tracking user directly
+  const [user, setUser] = useState<User | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [errorPosts, setErrorPosts] = useState<string | null>(null);
+
+  // Fetch posts function
+  const fetchPosts = useCallback(async () => {
+    setLoadingPosts(true);
+    setErrorPosts(null);
+    try {
+      // First fetch all posts
+      const { data: postsData, error: postsError } = await supabase
+        .from('posts')
+        .select('id, content, created_at, user_id, category, category_emoji, category_part')
+        .order('created_at', { ascending: false });
+
+      if (postsError) throw postsError;
+      
+      console.log('Raw posts data from Supabase:', postsData);
+
+      // Then fetch all profiles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name');
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user_id to full_name for quick lookup
+      const profileMap = new Map(
+        profilesData?.map(profile => [profile.id, profile.full_name]) || []
+      );
+
+      // Process posts to include full_name
+      const processedData = postsData?.map(post => ({
+        ...post,
+        full_name: profileMap.get(post.user_id) || null
+      })) || [];
+
+      console.log('Processed posts data:', processedData);
+      setPosts(processedData as Post[]);
+    } catch (err: any) {
+      console.error('Error fetching posts:', err);
+      setErrorPosts(err.message || 'Failed to fetch posts.');
+    } finally {
+      setLoadingPosts(false);
+    }
+  }, []);
+
+  // Callback to remove post from local state after deletion
+  const handlePostDeleted = (deletedPostId: number) => {
+    setPosts(currentPosts => currentPosts.filter(post => post.id !== deletedPostId));
+  };
+
+  // Fetch initial user session and posts
+  useEffect(() => {
+    setLoadingSession(true);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      setLoadingSession(false);
+      if (currentUser) {
+        fetchPosts(); // Fetch posts only if logged in initially
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      setLoadingSession(false);
+      if (currentUser) {
+        fetchPosts(); // Re-fetch posts if auth state changes to logged in
+      } else {
+        setPosts([]); // Clear posts if logged out
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [fetchPosts]); // Add fetchPosts to dependency array
+
+  // Logout is now handled by the Navbar server action
+  // const handleLogout = async () => { ... };
+
+  // Show main loading indicator only for session check
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <p>Loading session...</p> 
+      </div>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="container mx-auto px-4 pt-24 pb-8">
+        {session ? (
+          <div className="space-y-8">
+            {/* Status Form */}
+            {user && <StatusForm onPostAdded={fetchPosts} />}
+            
+            {/* Posts Section */}
+            <div className="max-w-2xl mx-auto">
+              {loadingPosts && (
+                <p className="text-center text-purple-600 dark:text-purple-300 font-medium">Loading posts...</p>
+              )}
+              {errorPosts && (
+                <p className="text-center text-red-500 font-medium">Error: {errorPosts}</p>
+              )}
+              {!loadingPosts && posts.length === 0 && user && (
+                <p className="text-center text-pink-600 dark:text-pink-300 font-medium">No posts yet. Be the first!</p>
+              )}
+              {!user && (
+                <p className="text-center text-sky-500 dark:text-sky-300 font-medium">Login to see and create posts.</p>
+              )}
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <PostItem 
+                    key={post.id} 
+                    post={post} 
+                    currentUser={user}
+                    onPostDeleted={handlePostDeleted}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+            <p>Login to see and create posts.</p> 
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
