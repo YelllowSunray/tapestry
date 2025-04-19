@@ -3,10 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 // import Link from 'next/link'; // No longer needed here
 import { supabase } from '@/lib/supabase/client';
+import { createBrowserClient } from '@supabase/ssr';
+import { Database } from '@/types/supabase';
 import type { Session, PostgrestError, User, AuthChangeEvent } from '@supabase/supabase-js';
 import StatusForm from './components/StatusForm';
 import PostItem from './components/PostItem'; // Import the PostItem component (we'll create this next)
 import { Post } from './types';
+
+type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
 interface Profile {
   id: string;
@@ -26,13 +30,16 @@ export default function Home() {
   const [userProfile, setUserProfile] = useState<{ full_name: string } | null>(null);
 
   useEffect(() => {
-    supabase?.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
+    if (!supabase) return;
+
+    const client = supabase as SupabaseClient;
+    client.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
-    const { data: { subscription } } = supabase?.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
       setSession(session);
-    }) ?? { data: { subscription: null } };
+    });
 
     return () => {
       subscription?.unsubscribe();
@@ -40,21 +47,21 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (session?.user) {
-      // Fetch user profile
-      supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', session.user.id)
-        .single()
-        .then(({ data, error }: SupabaseResponse<{ full_name: string }>) => {
-          if (error) {
-            console.error('Error fetching profile:', error);
-          } else {
-            setUserProfile(data);
-          }
-        });
-    }
+    if (!supabase || !session?.user) return;
+
+    const client = supabase as SupabaseClient;
+    client
+      .from('profiles')
+      .select('full_name')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error fetching profile:', error);
+        } else {
+          setUserProfile(data);
+        }
+      });
   }, [session]);
 
   // Removed session state, tracking user directly
@@ -65,11 +72,13 @@ export default function Home() {
 
   // Fetch posts function
   const fetchPosts = useCallback(async () => {
+    if (!supabase) return;
+
     setLoadingPosts(true);
     setErrorPosts(null);
     try {
-      // First fetch all posts
-      const { data: postsData, error: postsError } = await supabase
+      const client = supabase as SupabaseClient;
+      const { data: postsData, error: postsError } = await client
         .from('posts')
         .select('id, content, created_at, user_id, category, category_emoji, category_part')
         .order('created_at', { ascending: false });
@@ -78,8 +87,7 @@ export default function Home() {
       
       console.log('Raw posts data from Supabase:', postsData);
 
-      // Then fetch all profiles
-      const { data: profilesData, error: profilesError } = await supabase
+      const { data: profilesData, error: profilesError } = await client
         .from('profiles')
         .select('id, full_name');
 
@@ -113,31 +121,34 @@ export default function Home() {
 
   // Fetch initial user session and posts
   useEffect(() => {
+    if (!supabase) return;
+
     setLoadingSession(true);
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
+    const client = supabase as SupabaseClient;
+    client.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       setLoadingSession(false);
       if (currentUser) {
-        fetchPosts(); // Fetch posts only if logged in initially
+        fetchPosts();
       }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+    const { data: authListener } = client.auth.onAuthStateChange((event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       setLoadingSession(false);
       if (currentUser) {
-        fetchPosts(); // Re-fetch posts if auth state changes to logged in
+        fetchPosts();
       } else {
-        setPosts([]); // Clear posts if logged out
+        setPosts([]);
       }
     });
 
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, [fetchPosts]); // Add fetchPosts to dependency array
+  }, [fetchPosts]);
 
   // Logout is now handled by the Navbar server action
   // const handleLogout = async () => { ... };

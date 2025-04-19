@@ -7,10 +7,15 @@ import { Database } from '@/types/supabase';
 
 type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
-export default function AuthForm() {
+interface AuthFormProps {
+  mode: 'signin' | 'signup';
+  onSuccess: () => void;
+}
+
+export default function AuthForm({ mode, onSuccess }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(mode === 'signup');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; content: string } | null>(null);
 
@@ -54,6 +59,10 @@ export default function AuthForm() {
           ? 'Check your email for the confirmation link!'
           : 'Successfully signed in!',
       });
+      
+      if (!isSignUp) {
+        onSuccess();
+      }
     } catch (error: any) {
       setMessage({
         type: 'error',

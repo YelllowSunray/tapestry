@@ -5,9 +5,13 @@ import { Post } from '../types'; // Import the Post type from the types file
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns'; // For relative time
 import { supabase } from '@/lib/supabase/client'; // Import supabase client
+import { createBrowserClient } from '@supabase/ssr';
+import { Database } from '@/types/supabase';
 import type { User } from '@supabase/supabase-js'; // Import User type
 import CommentForm from './CommentForm';
 import CommentItem from './CommentItem';
+
+type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
 interface PostItemProps {
   post: Post;
@@ -53,7 +57,12 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
   const fetchComments = async () => {
     setLoadingComments(true);
     try {
-      const { data: commentsData, error: commentsError } = await supabase
+      if (!supabase) {
+        throw new Error('Supabase client is not initialized');
+      }
+
+      const client = supabase as SupabaseClient;
+      const { data: commentsData, error: commentsError } = await client
         .from('comments')
         .select('*')
         .eq('post_id', post.id)
@@ -61,8 +70,7 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
 
       if (commentsError) throw commentsError;
 
-      // Fetch profiles for comments
-      const { data: profilesData, error: profilesError } = await supabase
+      const { data: profilesData, error: profilesError } = await client
         .from('profiles')
         .select('id, full_name');
 
@@ -111,7 +119,12 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
   useEffect(() => {
     const fetchCommentCount = async () => {
       try {
-        const { count, error } = await supabase
+        if (!supabase) {
+          throw new Error('Supabase client is not initialized');
+        }
+
+        const client = supabase as SupabaseClient;
+        const { count, error } = await client
           .from('comments')
           .select('*', { count: 'exact', head: true })
           .eq('post_id', post.id);
@@ -149,7 +162,12 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
     setError(null);
 
     try {
-      const { error: deleteError } = await supabase
+      if (!supabase) {
+        throw new Error('Supabase client is not initialized');
+      }
+
+      const client = supabase as SupabaseClient;
+      const { error: deleteError } = await client
         .from('posts')
         .delete()
         .eq('id', post.id) // Ensure we delete the correct post

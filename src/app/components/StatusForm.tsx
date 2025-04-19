@@ -3,7 +3,11 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { createBrowserClient } from '@supabase/ssr';
+import { Database } from '@/types/supabase';
 import type { User } from '@supabase/supabase-js';
+
+type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
 interface StatusFormProps {
   onPostAdded?: () => void;
@@ -54,26 +58,31 @@ export default function StatusForm({ onPostAdded }: StatusFormProps) {
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      if (!supabase) {
+        throw new Error('Supabase client is not initialized');
+      }
+
+      const client = supabase as SupabaseClient;
+      const { data: { user } } = await client.auth.getUser();
       if (!user) throw new Error('You must be logged in to post');
 
       let photoUrl = null;
       if (photo) {
         const fileExt = photo.name.split('.').pop();
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const { data, error: uploadError } = await supabase.storage
+        const { data, error: uploadError } = await client.storage
           .from('photos')
           .upload(fileName, photo);
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = client.storage
           .from('photos')
           .getPublicUrl(fileName);
         photoUrl = publicUrl;
       }
 
-      const { error: insertError } = await supabase
+      const { error: insertError } = await client
         .from('posts')
         .insert([
           {
