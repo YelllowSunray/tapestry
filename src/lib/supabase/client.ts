@@ -1,8 +1,9 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/supabase'
 
 // Only create a client if we're in the browser
 const isBrowser = typeof window !== 'undefined'
-let supabase = null
+let supabase: ReturnType<typeof createBrowserClient<Database>> | null = null
 
 // Only attempt to create the client in the browser
 if (isBrowser) {
@@ -11,7 +12,7 @@ if (isBrowser) {
 
   if (supabaseUrl && supabaseAnonKey) {
     try {
-      supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+      supabase = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
     } catch (error) {
       console.error('Error initializing Supabase client:', error)
     }

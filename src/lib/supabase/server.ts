@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { Database } from '@/types/supabase'
 
 // Dynamic import to avoid loading during static page generation
 export async function createClient() {
@@ -15,7 +16,7 @@ export async function createClient() {
       return null
     }
     
-    return createServerClient(
+    return createServerClient<Database>(
       supabaseUrl,
       supabaseAnonKey,
       {
