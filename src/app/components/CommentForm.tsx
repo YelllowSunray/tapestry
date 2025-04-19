@@ -2,65 +2,76 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { createBrowserClient } from '@supabase/ssr';
+import { Database } from '@/types/supabase';
+
+type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
 interface CommentFormProps {
   postId: string;
-  parentId?: string;
+  parentId?: string | null;
   onCommentAdded: () => void;
 }
 
-export default function CommentForm({ postId, parentId, onCommentAdded }: CommentFormProps) {
+export default function CommentForm({ postId, parentId = null, onCommentAdded }: CommentFormProps) {
   const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
 
-    setIsSubmitting(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+    setLoading(true);
+    setError(null);
 
-      const { error } = await supabase
+    try {
+      if (!supabase) {
+        throw new Error('Supabase client is not initialized');
+      }
+
+      const client = supabase as SupabaseClient;
+      const { error } = await client
         .from('comments')
         .insert([
-          { 
-            content, 
+          {
+            content: content.trim(),
             post_id: postId,
-            user_id: user.id,
-            parent_id: parentId
-          }
+            parent_id: parentId,
+          },
         ]);
 
       if (error) throw error;
 
       setContent('');
       onCommentAdded();
-    } catch (error) {
-      console.error('Error adding comment:', error);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="mt-4">
-      <div className="flex gap-2">
-        <input
-          type="text"
+      <div className="flex flex-col space-y-2">
+        <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder={parentId ? "Write a reply..." : "Write a comment..."}
-          className="flex-1 px-4 py-2 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          disabled={isSubmitting}
+          placeholder="Write a comment..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          rows={3}
+          disabled={loading}
         />
+        {error && (
+          <div className="text-red-500 text-sm">{error}</div>
+        )}
         <button
           type="submit"
-          disabled={isSubmitting || !content.trim()}
-          className="px-4 py-2 text-white bg-purple-500 rounded-full hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading || !content.trim()}
+          className="self-end px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
         >
-          {isSubmitting ? 'Posting...' : 'Post'}
+          {loading ? 'Posting...' : 'Post Comment'}
         </button>
       </div>
     </form>
