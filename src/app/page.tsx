@@ -46,7 +46,10 @@ export default function Home() {
         }
 
         const client = supabase as SupabaseClient;
-        const { data: { session } } = await client.auth.getSession();
+        const { data: { session }, error: sessionError } = await client.auth.getSession();
+        
+        if (sessionError) throw sessionError;
+        
         setSession(session);
         setLoading(false);
 
@@ -60,7 +63,7 @@ export default function Home() {
         };
       } catch (error) {
         console.error('Error initializing session:', error);
-        setError('Failed to initialize session');
+        setError('Failed to initialize session. Please try refreshing the page.');
         setLoading(false);
       }
     };
@@ -104,26 +107,21 @@ export default function Home() {
 
       if (postsError) throw postsError;
       
-      console.log('Raw posts data from Supabase:', postsData);
-
       const { data: profilesData, error: profilesError } = await client
         .from('profiles')
         .select('id, full_name');
 
       if (profilesError) throw profilesError;
 
-      // Create a map of user_id to full_name for quick lookup
       const profileMap = new Map(
         profilesData?.map((profile: Profile) => [profile.id, profile.full_name]) || []
       );
 
-      // Process posts to include full_name
       const processedData = postsData?.map((post: Post) => ({
         ...post,
         full_name: profileMap.get(post.user_id) || null
       })) || [];
 
-      console.log('Processed posts data:', processedData);
       setPosts(processedData as Post[]);
     } catch (err: any) {
       console.error('Error fetching posts:', err);

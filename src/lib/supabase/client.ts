@@ -1,13 +1,21 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/supabase'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+let supabase: ReturnType<typeof createBrowserClient<Database>> | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables')
+if (typeof window !== 'undefined') {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      supabase = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey);
+    } catch (error) {
+      console.error('Error initializing Supabase client:', error);
+    }
+  } else {
+    console.error('Missing Supabase environment variables');
+  }
 }
 
-export const supabase = typeof window !== 'undefined' && supabaseUrl && supabaseAnonKey
-  ? createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
-  : null 
+export { supabase }; 
