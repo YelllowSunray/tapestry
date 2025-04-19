@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { createBrowserClient } from '@supabase/ssr';
+import { Database } from '@/types/supabase';
 import CommentForm from './CommentForm';
+
+type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
 interface Comment {
   id: string;
@@ -27,7 +31,10 @@ export default function CommentItem({ comment, postId, onCommentAdded }: Comment
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this comment?')) return;
-    if (!supabase) return;
+    if (!supabase) {
+      console.error('Supabase client is not initialized');
+      return;
+    }
 
     setIsDeleting(true);
     try {
