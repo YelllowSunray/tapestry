@@ -47,7 +47,7 @@ export default function Home() {
         .select('full_name')
         .eq('id', session.user.id)
         .single()
-        .then(({ data, error }) => {
+        .then(({ data, error }: SupabaseResponse<{ full_name: string }>) => {
           if (error) {
             console.error('Error fetching profile:', error);
           } else {
@@ -114,7 +114,7 @@ export default function Home() {
   // Fetch initial user session and posts
   useEffect(() => {
     setLoadingSession(true);
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       setLoadingSession(false);
@@ -123,7 +123,7 @@ export default function Home() {
       }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       setLoadingSession(false);

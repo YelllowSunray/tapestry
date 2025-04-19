@@ -1,7 +1,7 @@
 'use client'; // Can be client or server, depending on needs
 
 import { useState, useEffect } from 'react'; // Added useState and useEffect
-import { Post } from '../page'; // Import the Post type from the homepage
+import { Post } from '../types'; // Import the Post type from the types file
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns'; // For relative time
 import { supabase } from '@/lib/supabase/client'; // Import supabase client
