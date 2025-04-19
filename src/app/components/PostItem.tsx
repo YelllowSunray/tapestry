@@ -20,9 +20,14 @@ interface Comment {
   content: string;
   created_at: string;
   user_id: string;
-  full_name?: string | null;
-  replies?: Comment[];
+  post_id: string;
   parent_id?: string | null;
+  replies?: Comment[];
+}
+
+interface Profile {
+  id: string;
+  full_name: string;
 }
 
 export default function PostItem({ post, currentUser, onPostDeleted }: PostItemProps) {
@@ -64,29 +69,32 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
       if (profilesError) throw profilesError;
 
       const profileMap = new Map(
-        profilesData?.map(profile => [profile.id, profile.full_name]) || []
+        profilesData?.map((profile: Profile) => [profile.id, profile.full_name]) || []
       );
 
       // Process comments to build the reply hierarchy
-      const processedComments = commentsData?.map(comment => ({
-        ...comment,
-        full_name: profileMap.get(comment.user_id) || null,
-        replies: []
-      })) || [];
-
-      // Build the reply hierarchy
-      const commentMap = new Map(processedComments.map(comment => [comment.id, comment]));
+      const commentMap = new Map<string, Comment>();
       const rootComments: Comment[] = [];
 
-      processedComments.forEach(comment => {
+      // First pass: create comment objects and store in map
+      commentsData?.forEach((comment: Comment) => {
+        const commentWithReplies: Comment = {
+          ...comment,
+          replies: []
+        };
+        commentMap.set(comment.id, commentWithReplies);
+      });
+
+      // Second pass: build the hierarchy
+      commentsData?.forEach((comment: Comment) => {
         if (comment.parent_id) {
           const parent = commentMap.get(comment.parent_id);
           if (parent) {
             parent.replies = parent.replies || [];
-            parent.replies.push(comment);
+            parent.replies.push(commentMap.get(comment.id)!);
           }
         } else {
-          rootComments.push(comment);
+          rootComments.push(commentMap.get(comment.id)!);
         }
       });
 
