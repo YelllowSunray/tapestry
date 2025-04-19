@@ -23,31 +23,40 @@ interface SupabaseResponse<T> {
 }
 
 export default function Home() {
+  const [isClient, setIsClient] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<{ full_name: string } | null>(null);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [errorPosts, setErrorPosts] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!supabase) return;
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient || !supabase) return;
 
     const client = supabase as SupabaseClient;
     client.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      setLoading(false);
     });
 
     const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      setLoading(false);
     });
 
     return () => {
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [isClient]);
 
   useEffect(() => {
-    if (!supabase || !session?.user) return;
+    if (!isClient || !supabase || !session?.user) return;
 
     const client = supabase as SupabaseClient;
     client
@@ -62,17 +71,10 @@ export default function Home() {
           setUserProfile(data);
         }
       });
-  }, [session]);
+  }, [session, isClient]);
 
-  // Removed session state, tracking user directly
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingSession, setLoadingSession] = useState(true);
-  const [loadingPosts, setLoadingPosts] = useState(false);
-  const [errorPosts, setErrorPosts] = useState<string | null>(null);
-
-  // Fetch posts function
   const fetchPosts = useCallback(async () => {
-    if (!supabase) return;
+    if (!isClient || !supabase) return;
 
     setLoadingPosts(true);
     setErrorPosts(null);
@@ -112,52 +114,22 @@ export default function Home() {
     } finally {
       setLoadingPosts(false);
     }
-  }, []);
+  }, [isClient]);
 
-  // Callback to remove post from local state after deletion
-  const handlePostDeleted = (deletedPostId: number) => {
-    setPosts(currentPosts => currentPosts.filter(post => post.id !== deletedPostId));
-  };
-
-  // Fetch initial user session and posts
   useEffect(() => {
-    if (!supabase) return;
+    if (session?.user) {
+      fetchPosts();
+    }
+  }, [session, fetchPosts]);
 
-    setLoadingSession(true);
-    const client = supabase as SupabaseClient;
-    client.auth.getSession().then(({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      setLoadingSession(false);
-      if (currentUser) {
-        fetchPosts();
-      }
-    });
+  if (!isClient) {
+    return null;
+  }
 
-    const { data: authListener } = client.auth.onAuthStateChange((event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      setLoadingSession(false);
-      if (currentUser) {
-        fetchPosts();
-      } else {
-        setPosts([]);
-      }
-    });
-
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, [fetchPosts]);
-
-  // Logout is now handled by the Navbar server action
-  // const handleLogout = async () => { ... };
-
-  // Show main loading indicator only for session check
-  if (loadingSession) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <p>Loading session...</p> 
+        <p className="text-gray-600 dark:text-gray-400">Loading session...</p>
       </div>
     );
   }
@@ -168,7 +140,7 @@ export default function Home() {
         {session ? (
           <div className="space-y-8">
             {/* Status Form */}
-            {user && <StatusForm onPostAdded={fetchPosts} />}
+            {session.user && <StatusForm onPostAdded={fetchPosts} />}
             
             {/* Posts Section */}
             <div className="max-w-2xl mx-auto">
@@ -178,10 +150,10 @@ export default function Home() {
               {errorPosts && (
                 <p className="text-center text-red-500 font-medium">Error: {errorPosts}</p>
               )}
-              {!loadingPosts && posts.length === 0 && user && (
+              {!loadingPosts && posts.length === 0 && session.user && (
                 <p className="text-center text-pink-600 dark:text-pink-300 font-medium">No posts yet. Be the first!</p>
               )}
-              {!user && (
+              {!session.user && (
                 <p className="text-center text-sky-500 dark:text-sky-300 font-medium">Login to see and create posts.</p>
               )}
               <div className="space-y-4">
@@ -189,8 +161,8 @@ export default function Home() {
                   <PostItem 
                     key={post.id} 
                     post={post} 
-                    currentUser={user}
-                    onPostDeleted={handlePostDeleted}
+                    currentUser={session.user}
+                    onPostDeleted={fetchPosts}
                   />
                 ))}
               </div>
@@ -198,7 +170,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-            <p>Login to see and create posts.</p> 
+            <p className="text-gray-600 dark:text-gray-400">Login to see and create posts.</p>
           </div>
         )}
       </div>
