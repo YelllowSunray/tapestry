@@ -42,25 +42,26 @@ export default function Home() {
     const initializeSession = async () => {
       try {
         if (!supabase) {
-          throw new Error('Supabase client is not initialized');
+          console.error('Supabase client is not initialized');
+          throw new Error('Supabase client is not initialized. Please check your environment variables.');
         }
 
         const client = supabase as SupabaseClient;
+        console.log('Attempting to get session...');
         
-        // First try to get the session
         const { data: { session }, error: sessionError } = await client.auth.getSession();
         
         if (sessionError) {
           console.error('Session error:', sessionError);
-          throw sessionError;
+          throw new Error(`Session error: ${sessionError.message}`);
         }
         
+        console.log('Session retrieved:', session ? 'Present' : 'Not present');
         setSession(session);
         setLoading(false);
 
-        // Then set up the auth state change listener
         const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
-          console.log('Auth state changed:', event, session);
+          console.log('Auth state changed:', event, session ? 'Session present' : 'No session');
           setSession(session);
           setLoading(false);
         });
@@ -68,9 +69,9 @@ export default function Home() {
         return () => {
           subscription?.unsubscribe();
         };
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error initializing session:', error);
-        setError('Failed to initialize session. Please check your connection and try again.');
+        setError(error.message || 'Failed to initialize session. Please check your connection and try again.');
         setLoading(false);
       }
     };
