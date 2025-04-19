@@ -37,40 +37,57 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!isClient || !supabase) return;
+    if (!isClient) return;
 
-    const client = supabase as SupabaseClient;
-    client.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    const initializeSession = async () => {
+      try {
+        if (!supabase) {
+          throw new Error('Supabase client is not initialized');
+        }
 
-    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
+        const client = supabase as SupabaseClient;
+        const { data: { session } } = await client.auth.getSession();
+        setSession(session);
+        setLoading(false);
 
-    return () => {
-      subscription?.unsubscribe();
+        const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+          setSession(session);
+          setLoading(false);
+        });
+
+        return () => {
+          subscription?.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Error initializing session:', error);
+        setError('Failed to initialize session');
+        setLoading(false);
+      }
     };
+
+    initializeSession();
   }, [isClient]);
 
   useEffect(() => {
     if (!isClient || !supabase || !session?.user) return;
 
-    const client = supabase as SupabaseClient;
-    client
-      .from('profiles')
-      .select('full_name')
-      .eq('id', session.user.id)
-      .single()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Error fetching profile:', error);
-        } else {
-          setUserProfile(data);
-        }
-      });
+    const fetchProfile = async () => {
+      try {
+        const client = supabase as SupabaseClient;
+        const { data, error } = await client
+          .from('profiles')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) throw error;
+        setUserProfile(data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+
+    fetchProfile();
   }, [session, isClient]);
 
   const fetchPosts = useCallback(async () => {
@@ -130,6 +147,14 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <p className="text-gray-600 dark:text-gray-400">Loading session...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <p className="text-red-500 dark:text-red-400">{error}</p>
       </div>
     );
   }
