@@ -1,67 +1,70 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { logout } from '@/app/actions/auth';
+import { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import Link from 'next/link';
 
 export default function NavbarAuth() {
-  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase?.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase?.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    }) ?? { data: { subscription: null } };
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase?.auth.signOut() ?? { error: null };
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   if (loading) {
-    return <div className="h-8 w-8 animate-pulse bg-gray-200 rounded"></div>;
+    return <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />;
   }
 
-  return (
-    <div className="hidden md:flex items-center space-x-8">
-      {user ? (
-        // Logged In State
-        <div className="flex items-center space-x-4">
-          {/* Link to Account Page */}
-          <Link href="/account" className="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
-             Account
-          </Link>
-          <span className="text-sm text-gray-700 dark:text-gray-300 border-l border-gray-300 dark:border-gray-600 pl-4">
-            {user.email} 
-          </span>
-          {/* Logout Button using Server Action */}
-          <form action={logout}>
-            <button 
-              type="submit"
-              className="bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-1.5 px-3 rounded-md transition-colors"
-            >
-              Logout
-            </button>
-          </form>
-        </div>
-      ) : (
-        // Logged Out State
-        <>
-          <Link href="/login" className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-display">
-            Login
-          </Link>
-          <Link href="/signup" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-4 rounded-md transition-colors text-sm font-display">
-            Sign Up
-          </Link>
-        </>
-      )}
+  return user ? (
+    <div className="flex items-center gap-4">
+      <span className="text-sm text-gray-700 dark:text-gray-300">
+        {user.email}
+      </span>
+      <button
+        onClick={handleSignOut}
+        className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+      >
+        Sign Out
+      </button>
+    </div>
+  ) : (
+    <div className="flex items-center gap-4">
+      <Link
+        href="/login"
+        className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+      >
+        Sign In
+      </Link>
+      <Link
+        href="/signup"
+        className="rounded-md border border-indigo-600 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+      >
+        Sign Up
+      </Link>
     </div>
   );
 } 
