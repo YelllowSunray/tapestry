@@ -1,16 +1,23 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Only create a client if we're in the browser
+const isBrowser = typeof window !== 'undefined'
+let supabase = null
 
-let supabase: ReturnType<typeof createBrowserClient> | null = null
+// Only attempt to create the client in the browser
+if (isBrowser) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (supabaseUrl && supabaseAnonKey) {
-  supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
-} else if (process.env.NODE_ENV !== 'production') {
-  console.warn('Missing Supabase environment variables. Supabase client will be null.')
-} else {
-  throw new Error('Missing Supabase environment variables')
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+    } catch (error) {
+      console.error('Error initializing Supabase client:', error)
+    }
+  } else {
+    console.warn('Missing Supabase environment variables in browser')
+  }
 }
 
 export { supabase } 

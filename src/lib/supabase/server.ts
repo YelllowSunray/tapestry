@@ -1,44 +1,49 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
+// Dynamic import to avoid loading during static page generation
 export async function createClient() {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('Missing Supabase environment variables. Returning null client.')
+  try {
+    // Only proceed if we're in a dynamic route context
+    const cookieStore = await cookies()
+    
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Missing Supabase environment variables')
       return null
     }
-    throw new Error('Missing Supabase environment variables')
+    
+    return createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          get(name: string) {
+            const cookie = cookieStore.get(name)
+            return cookie?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            try {
+              cookieStore.set({ name, value, ...options })
+            } catch (error) {
+              // Handle cookie setting error
+            }
+          },
+          remove(name: string, options: CookieOptions) {
+            try {
+              cookieStore.set({ name, value: '', ...options })
+            } catch (error) {
+              // Handle cookie removal error
+            }
+          },
+        },
+      }
+    )
+  } catch (error) {
+    // If cookies() throws an error, we're in a static context
+    console.warn('Failed to create Supabase client - likely in static context')
+    return null
   }
-
-  const cookieStore = await cookies()
-
-  return createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookies: {
-        get(name: string) {
-          const cookie = cookieStore.get(name)
-          return cookie?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) {
-            // Handle cookie setting error
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (error) {
-            // Handle cookie removal error
-          }
-        },
-      },
-    }
-  )
 } 
