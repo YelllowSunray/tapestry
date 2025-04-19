@@ -46,14 +46,21 @@ export default function Home() {
         }
 
         const client = supabase as SupabaseClient;
+        
+        // First try to get the session
         const { data: { session }, error: sessionError } = await client.auth.getSession();
         
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          throw sessionError;
+        }
         
         setSession(session);
         setLoading(false);
 
+        // Then set up the auth state change listener
         const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+          console.log('Auth state changed:', event, session);
           setSession(session);
           setLoading(false);
         });
@@ -63,7 +70,7 @@ export default function Home() {
         };
       } catch (error) {
         console.error('Error initializing session:', error);
-        setError('Failed to initialize session. Please try refreshing the page.');
+        setError('Failed to initialize session. Please check your connection and try again.');
         setLoading(false);
       }
     };
@@ -152,7 +159,15 @@ export default function Home() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <p className="text-red-500 dark:text-red-400">{error}</p>
+        <div className="text-center">
+          <p className="text-red-500 dark:text-red-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Refresh Page
+          </button>
+        </div>
       </div>
     );
   }
