@@ -3,21 +3,19 @@
 import { useState, useEffect, useCallback } from 'react';
 // import Link from 'next/link'; // No longer needed here
 import { supabase } from '@/lib/supabase/client';
-import type { Session, PostgrestError, User } from '@supabase/supabase-js';
+import type { Session, PostgrestError, User, AuthChangeEvent } from '@supabase/supabase-js';
 import StatusForm from './components/StatusForm';
 import PostItem from './components/PostItem'; // Import the PostItem component (we'll create this next)
+import { Post } from './types';
 
-// Define a type for our posts
-export interface Post {
-  id: number;
-  content: string;
-  created_at: string;
-  user_id: string;
-  author_email?: string; // Keep this for potential fallback
-  full_name?: string | null; // Add full_name (can be null)
-  category?: string;
-  category_emoji?: string;
-  category_part?: string;
+interface Profile {
+  id: string;
+  full_name: string;
+}
+
+interface SupabaseResponse<T> {
+  data: T | null;
+  error: PostgrestError | null;
 }
 
 export default function Home() {
@@ -28,17 +26,17 @@ export default function Home() {
   const [userProfile, setUserProfile] = useState<{ full_name: string } | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase?.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       setSession(session);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase?.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       setSession(session);
-    });
+    }) ?? { data: { subscription: null } };
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -89,11 +87,11 @@ export default function Home() {
 
       // Create a map of user_id to full_name for quick lookup
       const profileMap = new Map(
-        profilesData?.map(profile => [profile.id, profile.full_name]) || []
+        profilesData?.map((profile: Profile) => [profile.id, profile.full_name]) || []
       );
 
       // Process posts to include full_name
-      const processedData = postsData?.map(post => ({
+      const processedData = postsData?.map((post: Post) => ({
         ...post,
         full_name: profileMap.get(post.user_id) || null
       })) || [];
