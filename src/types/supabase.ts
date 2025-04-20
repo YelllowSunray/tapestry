@@ -39,6 +39,11 @@ export interface Database {
           content: string
           user_id: string
           likes: number
+          section: string | null
+          category: string | null
+          category_emoji: string | null
+          category_part: string | null
+          photo_url: string | null
         }
         Insert: {
           id?: string
@@ -46,6 +51,11 @@ export interface Database {
           content: string
           user_id: string
           likes?: number
+          section?: string | null
+          category?: string | null
+          category_emoji?: string | null
+          category_part?: string | null
+          photo_url?: string | null
         }
         Update: {
           id?: string
@@ -53,6 +63,11 @@ export interface Database {
           content?: string
           user_id?: string
           likes?: number
+          section?: string | null
+          category?: string | null
+          category_emoji?: string | null
+          category_part?: string | null
+          photo_url?: string | null
         }
       }
       comments: {

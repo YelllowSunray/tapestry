@@ -1,14 +1,13 @@
-'use client'; // Need client component for hooks and auth state
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-// import Link from 'next/link'; // No longer needed here
 import { supabase } from '@/lib/supabase/client';
 import { createBrowserClient } from '@supabase/ssr';
 import { Database } from '@/types/supabase';
-import type { Session, PostgrestError, User, AuthChangeEvent } from '@supabase/supabase-js';
-import StatusForm from './components/StatusForm';
-import PostItem from './components/PostItem'; // Import the PostItem component (we'll create this next)
-import { Post } from './types';
+import type { Session, PostgrestError, User } from '@supabase/supabase-js';
+import RootsStatusForm from '../components/RootsStatusForm';
+import PostItem from '../components/PostItem';
+import { Post } from '../types';
 
 type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
@@ -17,18 +16,12 @@ interface Profile {
   full_name: string;
 }
 
-interface SupabaseResponse<T> {
-  data: T | null;
-  error: PostgrestError | null;
-}
-
-export default function Home() {
+export default function RootsPage() {
   const [isClient, setIsClient] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userProfile, setUserProfile] = useState<{ full_name: string } | null>(null);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [errorPosts, setErrorPosts] = useState<string | null>(null);
 
@@ -42,64 +35,25 @@ export default function Home() {
     const initializeSession = async () => {
       try {
         if (!supabase) {
-          console.error('Supabase client is not initialized');
-          throw new Error('Supabase client is not initialized. Please check your environment variables.');
+          throw new Error('Supabase client is not initialized');
         }
 
         const client = supabase as SupabaseClient;
-        console.log('Attempting to get session...');
-        
         const { data: { session }, error: sessionError } = await client.auth.getSession();
         
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          throw new Error(`Session error: ${sessionError.message}`);
-        }
+        if (sessionError) throw sessionError;
         
-        console.log('Session retrieved:', session ? 'Present' : 'Not present');
         setSession(session);
         setLoading(false);
-
-        const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
-          console.log('Auth state changed:', event, session ? 'Session present' : 'No session');
-          setSession(session);
-          setLoading(false);
-        });
-
-        return () => {
-          subscription?.unsubscribe();
-        };
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error initializing session:', error);
-        setError(error.message || 'Failed to initialize session. Please check your connection and try again.');
+        setError('Failed to initialize session. Please check your connection and try again.');
         setLoading(false);
       }
     };
 
     initializeSession();
   }, [isClient]);
-
-  useEffect(() => {
-    if (!isClient || !supabase || !session?.user) return;
-
-    const fetchProfile = async () => {
-      try {
-        const client = supabase as SupabaseClient;
-        const { data, error } = await client
-          .from('profiles')
-          .select('full_name')
-          .eq('id', session.user.id)
-          .single();
-
-        if (error) throw error;
-        setUserProfile(data);
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-      }
-    };
-
-    fetchProfile();
-  }, [session, isClient]);
 
   const fetchPosts = useCallback(async () => {
     if (!isClient || !supabase) return;
@@ -110,7 +64,8 @@ export default function Home() {
       const client = supabase as SupabaseClient;
       const { data: postsData, error: postsError } = await client
         .from('posts')
-        .select('id, content, created_at, user_id, category, category_emoji, category_part')
+        .select('id, content, created_at, user_id, category, category_emoji, category_part, photo_url')
+        .eq('section', 'roots')
         .order('created_at', { ascending: false });
 
       if (postsError) throw postsError;
@@ -178,6 +133,8 @@ export default function Home() {
       <div className="container mx-auto px-4 pt-24 pb-8">
         {session ? (
           <div className="space-y-8">
+            {session.user && <RootsStatusForm onPostAdded={fetchPosts} />}
+            
             <div className="max-w-2xl mx-auto">
               {loadingPosts && (
                 <p className="text-center text-purple-600 dark:text-purple-300 font-medium">Loading posts...</p>
@@ -186,7 +143,7 @@ export default function Home() {
                 <p className="text-center text-red-500 font-medium">Error: {errorPosts}</p>
               )}
               {!loadingPosts && posts.length === 0 && session.user && (
-                <p className="text-center text-pink-600 dark:text-pink-300 font-medium">No posts yet. Be the first!</p>
+                <p className="text-center text-pink-600 dark:text-pink-300 font-medium">No posts yet. Be the first to share your inner journey!</p>
               )}
               {!session.user && (
                 <p className="text-center text-sky-500 dark:text-sky-300 font-medium">Login to see and create posts.</p>
@@ -211,4 +168,4 @@ export default function Home() {
       </div>
     </main>
   );
-}
+} 

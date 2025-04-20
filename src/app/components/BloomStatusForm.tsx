@@ -9,26 +9,27 @@ import type { User } from '@supabase/supabase-js';
 
 type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
-interface StatusFormProps {
+interface BloomStatusFormProps {
   onPostAdded?: () => void;
 }
 
-type Category = {
-  emoji: string;
-  name: string;
-  description: string;
-  part: string;
-};
+const categories = [
+  { emoji: '✨', name: 'Epiphany', description: 'A moment of deep realization' },
+  { emoji: '🌙', name: 'Dream', description: 'A significant dream or vision' },
+  { emoji: '🌿', name: 'Awe', description: 'A moment of wonder and connection' },
+  { emoji: '💫', name: 'Alive', description: 'A moment of feeling truly alive' },
+  { emoji: '🌊', name: 'Flow', description: 'A state of complete immersion and focus' }
+];
 
-const categories: Category[] = [];
-
-export default function StatusForm({ onPostAdded }: StatusFormProps) {
+export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
   const [content, setContent] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<typeof categories[0] | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mood, setMood] = useState<string>('');
+  const [sound, setSound] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -84,8 +85,14 @@ export default function StatusForm({ onPostAdded }: StatusFormProps) {
             user_id: user.id,
             category: selectedCategory.name,
             category_emoji: selectedCategory.emoji,
-            category_part: selectedCategory.part,
-            photo_url: photoUrl
+            section: 'bloom',
+            subcategory: selectedCategory.name.toLowerCase(),
+            photo_url: photoUrl,
+            metadata: {
+              mood,
+              sound,
+              timestamp: new Date().toISOString()
+            }
           }
         ]);
 
@@ -95,6 +102,8 @@ export default function StatusForm({ onPostAdded }: StatusFormProps) {
       setSelectedCategory(null);
       setPhoto(null);
       setPhotoPreview(null);
+      setMood('');
+      setSound('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -128,6 +137,7 @@ export default function StatusForm({ onPostAdded }: StatusFormProps) {
             </button>
           ))}
         </div>
+
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
             <input
@@ -147,15 +157,39 @@ export default function StatusForm({ onPostAdded }: StatusFormProps) {
               </svg>
             </button>
           </div>
-          <div className="flex-1">
+
+          <div className="flex-1 space-y-4">
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="What's a moment worth remembering today?"
+              placeholder={selectedCategory?.name === 'Epiphany' 
+                ? "Today I realized..." 
+                : selectedCategory?.name === 'Dream'
+                ? "Describe your dream..."
+                : "Share your experience..."
+              }
               className="w-full p-4 text-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
               rows={3}
               disabled={isSubmitting}
             />
+
+            <div className="flex space-x-4">
+              <input
+                type="text"
+                value={mood}
+                onChange={(e) => setMood(e.target.value)}
+                placeholder="Current mood..."
+                className="flex-1 p-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+              <input
+                type="text"
+                value={sound}
+                onChange={(e) => setSound(e.target.value)}
+                placeholder="Ambient sound..."
+                className="flex-1 p-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+
             {photoPreview && (
               <div className="mt-2 relative">
                 <img
@@ -182,13 +216,15 @@ export default function StatusForm({ onPostAdded }: StatusFormProps) {
             )}
           </div>
         </div>
+
         {error && (
           <div className="text-red-500 text-sm">{error}</div>
         )}
+
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={isSubmitting || (!content.trim() && !selectedCategory && !photo)}
+            disabled={isSubmitting || !content.trim()}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? 'Posting...' : 'Post'}
