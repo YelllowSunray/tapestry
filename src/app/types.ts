@@ -8,4 +8,8 @@ export interface Post {
   category?: string;
   category_emoji?: string;
   category_part?: string;
+  subcategory?: string;
+  subcategory_emoji?: string;
+  photo_url?: string;
+  metadata?: any;
 } 

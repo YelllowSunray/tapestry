@@ -255,6 +255,12 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
                   <span className="flex items-center space-x-1 text-base text-gray-500 dark:text-gray-400">
                     <span>{post.category_emoji}</span>
                     <span>{post.category}</span>
+                    {post.subcategory && (
+                      <>
+                        <span className="text-gray-400 dark:text-gray-500">/</span>
+                        <span>{post.subcategory}</span>
+                      </>
+                    )}
                   </span>
                 )}
               </div>

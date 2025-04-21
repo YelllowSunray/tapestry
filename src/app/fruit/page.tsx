@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import { createBrowserClient } from '@supabase/ssr';
 import { Database } from '@/types/supabase';
 import type { Session, PostgrestError, User } from '@supabase/supabase-js';
-import BloomStatusForm from '../components/BloomStatusForm';
+import FruitStatusForm from '../components/FruitStatusForm';
 import PostItem from '../components/PostItem';
 import { Post } from '../types';
 
@@ -16,7 +16,7 @@ interface Profile {
   full_name: string;
 }
 
-export default function BloomPage() {
+export default function FruitPage() {
   const [isClient, setIsClient] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -64,8 +64,8 @@ export default function BloomPage() {
       const client = supabase as SupabaseClient;
       const { data: postsData, error: postsError } = await client
         .from('posts')
-        .select('id, content, created_at, user_id, category, category_emoji, category_part, photo_url, metadata')
-        .eq('section', 'bloom')
+        .select('id, content, created_at, user_id, category, category_emoji, category_part, subcategory, subcategory_emoji, photo_url')
+        .eq('section', 'fruit')
         .order('created_at', { ascending: false });
 
       if (postsError) throw postsError;
@@ -119,7 +119,7 @@ export default function BloomPage() {
           <p className="text-red-500 dark:text-red-400 mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
             Refresh Page
           </button>
@@ -129,26 +129,26 @@ export default function BloomPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800">
+    <main className="min-h-screen bg-gradient-to-b from-red-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 pt-24 pb-8">
         {session ? (
           <div className="space-y-8">
             <div className="max-w-2xl mx-auto">
-              <h1 className="text-xl text-center text-blue-600 dark:text-blue-400 mb-8">
-                Capture awe, inspiration, and transcendent experiences — moments that lift you.
+              <h1 className="text-xl text-center text-red-600 dark:text-red-400 mb-8">
+                Grown when your efforts help others — through co-creation, community building, mentoring
               </h1>
             </div>
-            {session.user && <BloomStatusForm onPostAdded={fetchPosts} />}
+            {session.user && <FruitStatusForm onPostAdded={fetchPosts} />}
             
             <div className="max-w-2xl mx-auto">
               {loadingPosts && (
-                <p className="text-center text-purple-600 dark:text-purple-300 font-medium">Loading posts...</p>
+                <p className="text-center text-red-600 dark:text-red-300 font-medium">Loading posts...</p>
               )}
               {errorPosts && (
                 <p className="text-center text-red-500 font-medium">Error: {errorPosts}</p>
               )}
               {!loadingPosts && posts.length === 0 && session.user && (
-                <p className="text-center text-pink-600 dark:text-pink-300 font-medium">No posts yet. Be the first to share your spiritual journey!</p>
+                <p className="text-center text-amber-600 dark:text-amber-300 font-medium">No posts yet. Start sharing your contributions!</p>
               )}
               {!session.user && (
                 <p className="text-center text-sky-500 dark:text-sky-300 font-medium">Login to see and create posts.</p>

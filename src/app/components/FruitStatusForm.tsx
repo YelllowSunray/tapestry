@@ -9,13 +9,13 @@ import type { User } from '@supabase/supabase-js';
 
 type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
-interface BloomStatusFormProps {
+interface FruitStatusFormProps {
   onPostAdded?: () => void;
 }
 
-export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
+export default function FruitStatusForm({ onPostAdded }: FruitStatusFormProps) {
   const [content, setContent] = useState('');
-  const [selectedSubcategory, setSelectedSubcategory] = useState<{
+  const [selectedCategory, setSelectedCategory] = useState<{
     name: string;
     emoji: string;
     description: string;
@@ -27,21 +27,21 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const subcategories = [
+  const categories = [
     {
-      name: 'epiphany',
-      emoji: '💡',
-      description: 'A sudden realization or insight'
+      name: 'contributions',
+      emoji: '🎁',
+      description: 'Giving back and making a difference'
     },
     {
-      name: 'dream',
-      emoji: '🌙',
-      description: 'A dream or vision you want to remember'
+      name: 'sharing',
+      emoji: '🤝',
+      description: 'Collaboration and community building'
     },
     {
-      name: 'awe',
-      emoji: '✨',
-      description: 'A moment of wonder or transcendence'
+      name: 'mentoring',
+      emoji: '👥',
+      description: 'Guiding and supporting others'
     }
   ];
 
@@ -59,7 +59,7 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim() || !selectedCategory) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -95,12 +95,12 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
           {
             content: content.trim(),
             user_id: user.id,
-            section: 'bloom',
-            category: 'bloom',
-            category_emoji: '🌸',
-            category_part: selectedSubcategory?.name || 'bloom',
-            subcategory: selectedSubcategory?.name || null,
-            subcategory_emoji: selectedSubcategory?.emoji || null,
+            section: 'fruit',
+            category: 'fruit',
+            category_emoji: '🍎',
+            category_part: selectedCategory.name,
+            subcategory: selectedCategory.name,
+            subcategory_emoji: selectedCategory.emoji,
             photo_url: photoUrl
           }
         ]);
@@ -108,6 +108,7 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
       if (insertError) throw insertError;
 
       setContent('');
+      setSelectedCategory(null);
       setPhoto(null);
       setPhotoPreview(null);
       if (fileInputRef.current) {
@@ -127,19 +128,19 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
     <div className="w-full max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          {subcategories.map((subcategory) => (
+          {categories.map((category) => (
             <button
-              key={subcategory.name}
+              key={category.name}
               type="button"
-              onClick={() => setSelectedSubcategory(subcategory)}
+              onClick={() => setSelectedCategory(category)}
               className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                selectedSubcategory?.name === subcategory.name
-                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                selectedCategory?.name === category.name
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
             >
-              <span className="text-lg">{subcategory.emoji}</span>
-              <span className="font-medium">{subcategory.name}</span>
+              <span className="text-lg">{category.emoji}</span>
+              <span className="font-medium">{category.name}</span>
             </button>
           ))}
         </div>
@@ -166,8 +167,8 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Share your spiritual moment..."
-              className="w-full p-4 text-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              placeholder="Share contributions, sharings, give-back..."
+              className="w-full p-4 text-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
               rows={3}
               disabled={isSubmitting}
             />
@@ -203,8 +204,8 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={isSubmitting || !content.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={isSubmitting || (!content.trim() && !selectedCategory && !photo)}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? 'Posting...' : 'Post'}
           </button>

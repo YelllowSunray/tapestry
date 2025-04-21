@@ -133,6 +133,11 @@ export default function RootsPage() {
       <div className="container mx-auto px-4 pt-24 pb-8">
         {session ? (
           <div className="space-y-8">
+            <div className="max-w-2xl mx-auto">
+              <h1 className="text-xl text-center text-purple-600 dark:text-purple-400 mb-8">
+                Explore your foundations — your personal history, fears, inner child, wounds, cultural heritage, and identity.
+              </h1>
+            </div>
             {session.user && <RootsStatusForm onPostAdded={fetchPosts} />}
             
             <div className="max-w-2xl mx-auto">

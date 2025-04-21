@@ -9,41 +9,27 @@ import type { User } from '@supabase/supabase-js';
 
 type SupabaseClient = ReturnType<typeof createBrowserClient<Database>>;
 
-interface BloomStatusFormProps {
+interface LeavesStatusFormProps {
   onPostAdded?: () => void;
 }
 
-export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
+const categories = [
+  { emoji: '🎵', name: 'Music', description: 'What are you listening to?' },
+  { emoji: '🍽️', name: 'Food', description: 'What are you eating?' },
+  { emoji: '✨', name: 'Vibe', description: 'How are you feeling?' },
+  { emoji: '📸', name: 'Moment', description: 'Share a beautiful moment' },
+  { emoji: '💭', name: 'Update', description: 'What are you up to?' }
+];
+
+export default function LeavesStatusForm({ onPostAdded }: LeavesStatusFormProps) {
   const [content, setContent] = useState('');
-  const [selectedSubcategory, setSelectedSubcategory] = useState<{
-    name: string;
-    emoji: string;
-    description: string;
-  } | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<typeof categories[0] | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-
-  const subcategories = [
-    {
-      name: 'epiphany',
-      emoji: '💡',
-      description: 'A sudden realization or insight'
-    },
-    {
-      name: 'dream',
-      emoji: '🌙',
-      description: 'A dream or vision you want to remember'
-    },
-    {
-      name: 'awe',
-      emoji: '✨',
-      description: 'A moment of wonder or transcendence'
-    }
-  ];
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,7 +45,7 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim() || !selectedCategory) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -95,12 +81,10 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
           {
             content: content.trim(),
             user_id: user.id,
-            section: 'bloom',
-            category: 'bloom',
-            category_emoji: '🌸',
-            category_part: selectedSubcategory?.name || 'bloom',
-            subcategory: selectedSubcategory?.name || null,
-            subcategory_emoji: selectedSubcategory?.emoji || null,
+            category: 'leaves',
+            category_emoji: selectedCategory.emoji,
+            subcategory: selectedCategory.name,
+            section: 'leaves',
             photo_url: photoUrl
           }
         ]);
@@ -108,6 +92,7 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
       if (insertError) throw insertError;
 
       setContent('');
+      setSelectedCategory(null);
       setPhoto(null);
       setPhotoPreview(null);
       if (fileInputRef.current) {
@@ -127,22 +112,23 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
     <div className="w-full max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          {subcategories.map((subcategory) => (
+          {categories.map((category) => (
             <button
-              key={subcategory.name}
+              key={category.name}
               type="button"
-              onClick={() => setSelectedSubcategory(subcategory)}
+              onClick={() => setSelectedCategory(category)}
               className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                selectedSubcategory?.name === subcategory.name
-                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                selectedCategory?.name === category.name
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
             >
-              <span className="text-lg">{subcategory.emoji}</span>
-              <span className="font-medium">{subcategory.name}</span>
+              <span className="text-lg">{category.emoji}</span>
+              <span className="font-medium">{category.name}</span>
             </button>
           ))}
         </div>
+
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
             <input
@@ -162,12 +148,13 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
               </svg>
             </button>
           </div>
+
           <div className="flex-1">
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Share your spiritual moment..."
-              className="w-full p-4 text-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              placeholder={selectedCategory?.description || "Share what's happening..."}
+              className="w-full p-4 text-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
               rows={3}
               disabled={isSubmitting}
             />
@@ -197,14 +184,16 @@ export default function BloomStatusForm({ onPostAdded }: BloomStatusFormProps) {
             )}
           </div>
         </div>
+
         {error && (
           <div className="text-red-500 text-sm">{error}</div>
         )}
+
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={isSubmitting || !content.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? 'Posting...' : 'Post'}
           </button>
