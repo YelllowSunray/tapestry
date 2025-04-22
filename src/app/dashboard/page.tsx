@@ -93,6 +93,9 @@ export default function DashboardPage() {
 
       if (updateError) throw updateError;
       setSuccess('Profile updated successfully!');
+      
+      // Refresh the page to update the navbar
+      router.refresh();
     } catch (err: any) {
       console.error('Error updating profile:', err);
       setError(err.message);
@@ -142,6 +145,9 @@ export default function DashboardPage() {
                   className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:border-purple-500 focus:ring-purple-500"
                   placeholder="Enter your full name"
                 />
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  This name will be displayed in the navbar and on your posts.
+                </p>
               </div>
 
               {error && (

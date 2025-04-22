@@ -43,36 +43,15 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
   const [loadingComments, setLoadingComments] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
-  const [authorName, setAuthorName] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchAuthorProfile();
-  }, [post.user_id]);
-
-  const fetchAuthorProfile = async () => {
-    try {
-      if (!supabase) {
-        throw new Error('Supabase client is not initialized');
-      }
-
-      const client = supabase as SupabaseClient;
-      const { data, error: fetchError } = await client
-        .from('profiles')
-        .select('full_name')
-        .eq('id', post.user_id)
-        .single();
-
-      if (fetchError) throw fetchError;
-      setAuthorName(data?.full_name || null);
-    } catch (err) {
-      console.error('Error fetching author profile:', err);
-    }
-  };
 
   // Format the timestamp into a readable relative format (e.g., "5 minutes ago")
   const timeAgo = post.created_at 
     ? formatDistanceToNow(new Date(post.created_at), { addSuffix: true })
     : 'just now';
+
+  // TODO: Fetch author details (e.g., email or username) based on post.user_id if needed
+  // This might involve another Supabase query here or joining tables in the initial fetch
+  const authorIdentifier = post.full_name || post.author_email || `User (${post.user_id.substring(0, 6)})`; // Placeholder
 
   // Check if the current user is the author of the post
   const isAuthor = currentUser?.id === post.user_id;
@@ -270,7 +249,7 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                  {authorName || post.user_id.substring(0, 6)}
+                  {post.full_name || `User ${post.user_id.substring(0, 6)}`}
                 </span>
                 {post.category && (
                   <span className="flex items-center space-x-1 text-base text-gray-500 dark:text-gray-400">

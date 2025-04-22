@@ -62,28 +62,37 @@ export default function BloomPage() {
     setErrorPosts(null);
     try {
       const client = supabase as SupabaseClient;
+      
+      // First, fetch all posts
       const { data: postsData, error: postsError } = await client
         .from('posts')
-        .select('id, content, created_at, user_id, category, category_emoji, category_part, photo_url, metadata')
+        .select('id, content, created_at, user_id, category, category_emoji, category_part, subcategory, subcategory_emoji, photo_url, section')
         .eq('section', 'bloom')
         .order('created_at', { ascending: false });
 
       if (postsError) throw postsError;
-      
+
+      // Then, fetch all profiles
       const { data: profilesData, error: profilesError } = await client
         .from('profiles')
         .select('id, full_name');
 
       if (profilesError) throw profilesError;
 
-      const profileMap = new Map(
-        profilesData?.map((profile: Profile) => [profile.id, profile.full_name]) || []
-      );
+      // Create a map of user IDs to profile data
+      const profileMap = new Map();
+      profilesData?.forEach((profile) => {
+        profileMap.set(profile.id, profile.full_name);
+      });
 
-      const processedData = postsData?.map((post: Post) => ({
-        ...post,
-        full_name: profileMap.get(post.user_id) || null
-      })) || [];
+      // Combine posts with profile data
+      const processedData = postsData?.map((post: Post) => {
+        const fullName = profileMap.get(post.user_id);
+        return {
+          ...post,
+          full_name: fullName || null
+        };
+      }) || [];
 
       setPosts(processedData as Post[]);
     } catch (err: any) {
