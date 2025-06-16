@@ -234,7 +234,7 @@ export default function BloomPage() {
           <div className="space-y-8">
             <div className="max-w-2xl mx-auto">
               <h1 className="text-xl text-center text-blue-600 dark:text-blue-400 mb-8">
-                Capture awe, inspiration, and transcendent experiences — moments that lift you.
+                Capture awe, inspiration, and transcendent experiences — moments that lift you - what are your dreams?
               </h1>
             </div>
             {session.user && <BloomStatusForm onPostAdded={fetchPosts} />}

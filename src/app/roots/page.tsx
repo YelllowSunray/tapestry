@@ -135,7 +135,7 @@ export default function RootsPage() {
           <div className="space-y-8">
             <div className="max-w-2xl mx-auto">
               <h1 className="text-xl text-center text-purple-600 dark:text-purple-400 mb-8">
-                Explore your foundations — your personal history, fears, inner child, wounds, cultural heritage, and identity.
+                What makes you scared? Explore your wounds.
               </h1>
             </div>
             {session.user && <RootsStatusForm onPostAdded={fetchPosts} />}
