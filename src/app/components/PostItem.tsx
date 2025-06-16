@@ -49,9 +49,8 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
     ? formatDistanceToNow(new Date(post.created_at), { addSuffix: true })
     : 'just now';
 
-  // TODO: Fetch author details (e.g., email or username) based on post.user_id if needed
-  // This might involve another Supabase query here or joining tables in the initial fetch
-  const authorIdentifier = post.full_name || post.author_email || `User (${post.user_id.substring(0, 6)})`; // Placeholder
+  // Use the full_name from the post object, fallback to email or user ID if not available
+  const authorIdentifier = post.full_name || post.author_email || `User (${post.user_id.substring(0, 6)})`;
 
   // Check if the current user is the author of the post
   const isAuthor = currentUser?.id === post.user_id;
@@ -249,7 +248,7 @@ export default function PostItem({ post, currentUser, onPostDeleted }: PostItemP
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                  {post.full_name || `User ${post.user_id.substring(0, 6)}`}
+                  {authorIdentifier}
                 </span>
                 {post.category && (
                   <span className="flex items-center space-x-1 text-base text-gray-500 dark:text-gray-400">

@@ -44,10 +44,10 @@ export default function BloomPage() {
         if (sessionError) throw sessionError;
         
         setSession(session);
-        setLoading(false);
       } catch (error) {
         console.error('Error initializing session:', error);
         setError('Failed to initialize session. Please check your connection and try again.');
+      } finally {
         setLoading(false);
       }
     };
@@ -56,52 +56,126 @@ export default function BloomPage() {
   }, [isClient]);
 
   const fetchPosts = useCallback(async () => {
-    if (!isClient || !supabase) return;
+    if (!isClient) {
+      console.error('Client not initialized');
+      return;
+    }
+
+    if (!supabase) {
+      console.error('Supabase client is not initialized');
+      setErrorPosts('Database connection not available. Please refresh the page.');
+      return;
+    }
 
     setLoadingPosts(true);
     setErrorPosts(null);
+
     try {
+      console.log('Starting to fetch posts...');
       const client = supabase as SupabaseClient;
-      
-      // First, fetch all posts
+
+      // First, fetch all posts with their user IDs
       const { data: postsData, error: postsError } = await client
         .from('posts')
-        .select('id, content, created_at, user_id, category, category_emoji, category_part, subcategory, subcategory_emoji, photo_url, section')
+        .select('id, content, created_at, user_id, category, category_emoji, category_part, photo_url, metadata')
         .eq('section', 'bloom')
         .order('created_at', { ascending: false });
 
-      if (postsError) throw postsError;
+      if (postsError) {
+        console.error('Error fetching posts:', postsError);
+        throw new Error(`Failed to fetch posts: ${postsError.message}`);
+      }
 
-      // Then, fetch all profiles
+      if (!postsData || postsData.length === 0) {
+        console.log('No posts found');
+        setPosts([]);
+        return;
+      }
+
+      // Log the posts we fetched
+      console.log('Posts fetched:', postsData.map(p => ({ id: p.id, user_id: p.user_id })));
+
+      // Get unique user IDs from posts
+      const userIds = [...new Set(postsData.map(post => post.user_id))];
+      console.log('Unique user IDs:', userIds);
+
+      // Fetch profiles for all users who have posts
       const { data: profilesData, error: profilesError } = await client
         .from('profiles')
-        .select('id, full_name');
+        .select('id, full_name')
+        .in('id', userIds);
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        throw new Error(`Failed to fetch profiles: ${profilesError.message}`);
+      }
+
+      if (!profilesData) {
+        console.error('No profiles found for users:', userIds);
+        throw new Error('Failed to fetch user profiles');
+      }
+
+      // Log the profiles we fetched
+      console.log('Profiles fetched:', profilesData);
 
       // Create a map of user IDs to profile data
       const profileMap = new Map();
-      profilesData?.forEach((profile) => {
-        profileMap.set(profile.id, profile.full_name);
+      profilesData.forEach(profile => {
+        if (profile.id && profile.full_name) {
+          console.log(`Mapping profile: ${profile.id} -> ${profile.full_name}`);
+          profileMap.set(profile.id, profile.full_name);
+        } else {
+          console.warn(`Profile missing data:`, profile);
+        }
       });
 
+      // Log the profile map
+      console.log('Profile map entries:', Array.from(profileMap.entries()));
+
       // Combine posts with profile data
-      const processedData = postsData?.map((post: Post) => {
+      const processedData = postsData.map(post => {
         const fullName = profileMap.get(post.user_id);
+        console.log(`Processing post ${post.id}:`, {
+          user_id: post.user_id,
+          found_name: fullName,
+          has_profile: profileMap.has(post.user_id)
+        });
+        
         return {
           ...post,
           full_name: fullName || null
         };
-      }) || [];
+      });
+
+      // Log the final processed data
+      console.log('Processed posts:', processedData.map(p => ({
+        id: p.id,
+        user_id: p.user_id,
+        full_name: p.full_name
+      })));
 
       setPosts(processedData as Post[]);
-    } catch (err: any) {
-      console.error('Error fetching posts:', err);
-      setErrorPosts(err.message || 'Failed to fetch posts.');
+      setErrorPosts(null);
+    } catch (error: any) {
+      console.error('Detailed error in fetchPosts:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stack: error.stack
+      });
+      setErrorPosts(error.message || 'Failed to fetch posts. Please try again later.');
     } finally {
       setLoadingPosts(false);
     }
   }, [isClient]);
+
+  // Add a retry mechanism
+  const handleRetry = useCallback(() => {
+    console.log('Retrying fetch...');
+    setErrorPosts(null);
+    fetchPosts();
+  }, [fetchPosts]);
 
   useEffect(() => {
     if (session?.user) {
@@ -131,6 +205,22 @@ export default function BloomPage() {
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
           >
             Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (errorPosts) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <p className="text-red-500 dark:text-red-400 mb-4">{errorPosts}</p>
+          <button
+            onClick={handleRetry}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Retry
           </button>
         </div>
       </div>

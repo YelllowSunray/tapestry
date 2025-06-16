@@ -5,11 +5,15 @@ export interface Post {
   user_id: string;
   author_email?: string;
   full_name?: string | null;
-  category?: string;
-  category_emoji?: string;
-  category_part?: string;
+  category?: string | null;
+  category_emoji?: string | null;
+  category_part?: string | null;
   subcategory?: string;
   subcategory_emoji?: string;
-  photo_url?: string;
-  metadata?: any;
+  photo_url?: string | null;
+  metadata?: {
+    section?: string;
+    [key: string]: any;
+  };
+  likes?: number;
 } 

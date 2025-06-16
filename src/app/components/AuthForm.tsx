@@ -47,8 +47,16 @@ export default function AuthForm({ mode, onSuccess }: AuthFormProps) {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              email_confirmed: true
+            }
           },
         });
+
+        if (response.data?.user) {
+          // If signup is successful, redirect to login
+          onSuccess();
+        }
       } else {
         response = await client.auth.signInWithPassword({
           email,
@@ -63,7 +71,7 @@ export default function AuthForm({ mode, onSuccess }: AuthFormProps) {
       setMessage({
         type: 'success',
         content: isSignUp
-          ? 'Check your email for the confirmation link!'
+          ? 'All ready, login with your login credentials!'
           : 'Successfully signed in!',
       });
       
